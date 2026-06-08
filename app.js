@@ -23,6 +23,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const PUBLIC_DB_URL = 'https://kvdb.io/MNXoZJc9nphZp7xZ6n8492/alishba_portfolio_shared_projects';
     let publicProjectsList = [];
 
+    // User Owner Token to securely delete/manage their own shared projects
+    let ownerToken = localStorage.getItem('portfolio_owner_token');
+    if (!ownerToken) {
+        ownerToken = 'owner-' + Math.random().toString(36).substr(2, 9) + '-' + Date.now();
+        localStorage.setItem('portfolio_owner_token', ownerToken);
+    }
+
     // Category mapping for accepted file types and labels
     const categoryConfig = {
         video: {
@@ -311,7 +318,8 @@ document.addEventListener('DOMContentLoaded', () => {
             description: description,
             fileName: fileName || 'Public Link',
             fileSize: fileSize || 'External Link',
-            fileUrl: fileUrl
+            fileUrl: fileUrl,
+            owner: ownerToken
         };
 
         // Prevent duplicates in public shared feed
@@ -495,6 +503,29 @@ document.addEventListener('DOMContentLoaded', () => {
             if (project.fileUrl && project.fileUrl.startsWith('blob:')) {
                 URL.revokeObjectURL(project.fileUrl);
             }
+
+            // Sync deletion: if this project was shared publicly by this owner, remove it from public feed too
+            const matchedPublicIndex = publicProjectsList.findIndex(p => 
+                p.title === project.title && 
+                p.type === project.type && 
+                p.owner === ownerToken
+            );
+
+            if (matchedPublicIndex !== -1) {
+                publicProjectsList.splice(matchedPublicIndex, 1);
+                fetch(PUBLIC_DB_URL, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(publicProjectsList)
+                })
+                .then(res => {
+                    if (res.ok) {
+                        console.log("Automatically removed from public shared database.");
+                    }
+                })
+                .catch(err => console.error("Error sync-deleting public project:", err));
+            }
+
             deleteProjectFromDB(projectId);
             projectsList.splice(index, 1);
             renderFeed();
@@ -708,6 +739,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 </button>
             ` : '';
 
+            // Public cards can only be deleted by their owner
+            let showDeleteBtn = true;
+            if (project.id.startsWith('public-')) {
+                showDeleteBtn = (project.owner === ownerToken);
+            }
+
+            const deleteBtnHtml = showDeleteBtn ? `
+                <button class="delete-btn" onclick="deleteProject('${project.id}')" title="Delete Project">
+                    <i class="fa-solid fa-trash-can"></i>
+                </button>
+            ` : '';
+
             // Put card together
             card.innerHTML = `
                 <div class="project-card-header" style="display: flex; justify-content: space-between; align-items: flex-start;">
@@ -720,9 +763,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                     <div style="display: flex; align-items: center;">
                         ${shareBtnHtml}
-                        <button class="delete-btn" onclick="deleteProject('${project.id}')" title="Delete Project">
-                            <i class="fa-solid fa-trash-can"></i>
-                        </button>
+                        ${deleteBtnHtml}
                     </div>
                 </div>
                 
