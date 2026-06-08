@@ -15,35 +15,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const fileHelpTextNode = document.getElementById('file-help-text-node');
     const filterTabBtns = document.querySelectorAll('.filter-tab-btn');
 
-    // Access Password Configuration
-    const ACCESS_PASSWORD = 'myworkspace258';
-
-    // Password Gate DOM Elements
-    const passwordGateOverlay = document.getElementById('password-gate-overlay');
-    const passwordGateForm = document.getElementById('password-gate-form');
-    const passwordInput = document.getElementById('password-input');
-    const passwordError = document.getElementById('password-error');
-
-    // Check Password session state
-    if (sessionStorage.getItem('portfolio_unlocked') === 'true') {
-        passwordGateOverlay.style.display = 'none';
-    } else {
-        passwordGateForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            if (passwordInput.value === ACCESS_PASSWORD) {
-                sessionStorage.setItem('portfolio_unlocked', 'true');
-                passwordGateOverlay.style.transition = 'opacity 0.4s ease';
-                passwordGateOverlay.style.opacity = '0';
-                setTimeout(() => {
-                    passwordGateOverlay.style.display = 'none';
-                }, 400);
-            } else {
-                passwordError.style.display = 'block';
-                passwordInput.value = '';
-            }
-        });
-    }
-
     // Portfolio State
     let projectsList = [];
     let currentFilter = 'all';
@@ -211,6 +182,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         request.onerror = function(e) {
             console.error("IndexedDB error:", e);
+            if (window.location.protocol === 'file:') {
+                alert("Browser Security Notice: You opened this site directly from local files (file:///...). Browsers block local databases on file:// schemes for security. To save your uploaded files permanently, please use the live GitHub website link or start a local server (http://localhost:8000)!");
+            }
             if (callback) callback();
         };
     }
@@ -248,8 +222,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 initPreloadedProjects();
             } else {
                 projectsList = saved.map(p => {
-                    if (p.fileData) {
-                        p.fileUrl = URL.createObjectURL(p.fileData);
+                    if (p.fileData && (p.fileData instanceof Blob || p.fileData instanceof File)) {
+                        try {
+                            p.fileUrl = URL.createObjectURL(p.fileData);
+                        } catch (err) {
+                            console.error("Error creating Object URL for project:", p.id, err);
+                            p.fileUrl = '';
+                        }
+                    } else {
+                        p.fileUrl = '';
                     }
                     return p;
                 });
