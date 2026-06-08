@@ -14,6 +14,15 @@
     <script src="app.js" defer></script>
 </head>
 <body>
+    <!-- Uploading Progress Overlay -->
+    <div id="upload-overlay" class="password-gate-overlay" style="display: none; flex-direction: column; z-index: 2000;">
+        <div class="glass-card" style="text-align: center; padding: 3rem 2rem; max-width: 400px; width: 90%; border-color: rgba(0, 242, 254, 0.3) !important; box-shadow: 0 0 50px rgba(0, 242, 254, 0.25);">
+            <i class="fa-solid fa-circle-notch fa-spin" style="font-size: 3.5rem; color: var(--accent-blue); text-shadow: 0 0 20px rgba(0, 242, 254, 0.5); margin-bottom: 1.5rem;"></i>
+            <h3 style="font-size: 1.8rem; margin-bottom: 0.5rem;">Uploading to Public Servers</h3>
+            <p style="color: var(--text-secondary); font-size: 0.95rem; margin-bottom: 0;">Publishing your file to the shared feed... Please do not close or refresh this tab.</p>
+        </div>
+    </div>
+
     <!-- Abstract Background Gradients -->
     <div class="bg-glow bg-glow-1"></div>
     <div class="bg-glow bg-glow-2"></div>
@@ -106,6 +115,13 @@
                     <div class="form-group">
                         <label for="project-description">Project Description & Reflections</label>
                         <textarea id="project-description" name="description" rows="5" placeholder="Write a detailed explanation of your tools used, methodologies, and final learnings..." required></textarea>
+                    </div>
+
+                    <div class="form-group" style="flex-direction: row; align-items: center; gap: 0.5rem; margin-top: 0.5rem; margin-bottom: 1rem; cursor: pointer; display: flex;">
+                        <input type="checkbox" id="project-share-public" name="share_public" style="width: 18px; height: 18px; cursor: pointer; accent-color: var(--accent-blue);">
+                        <label for="project-share-public" style="cursor: pointer; text-transform: none; font-size: 0.85rem; color: var(--accent-blue); font-weight: 600; margin-bottom: 0; display: flex; align-items: center; gap: 0.25rem;">
+                            <i class="fa-solid fa-globe"></i> Share Publicly with Everyone (Online)
+                        </label>
                     </div>
 
                     <button type="submit" class="submit-btn" id="btn-add-project">

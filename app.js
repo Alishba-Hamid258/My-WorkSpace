@@ -112,56 +112,65 @@ document.addEventListener('DOMContentLoaded', () => {
         const description = document.getElementById('project-description').value.trim();
         const file = projectFileInput.files[0];
         const link = document.getElementById('project-link').value.trim();
+        const sharePublicly = document.getElementById('project-share-public') ? document.getElementById('project-share-public').checked : false;
 
         if (!file && !link) {
             alert('Please select a file to upload OR paste a public share link!');
             return;
         }
 
-        let fileUrl = '';
-        let fileName = '';
-        let fileSize = '';
-        let fileData = null;
+        function saveLocalAndRender(finalFileUrl, finalFileName, finalFileSize, finalFileData) {
+            const newProject = {
+                id: 'uploaded-' + Date.now(),
+                title: title,
+                type: category,
+                categoryName: getCategoryName(category),
+                description: description,
+                fileName: finalFileName,
+                fileSize: finalFileSize,
+                fileUrl: finalFileUrl,
+                fileData: finalFileData // Store File Blob in IndexedDB!
+            };
 
-        if (file) {
-            fileUrl = URL.createObjectURL(file);
-            fileName = file.name;
-            fileSize = formatBytes(file.size);
-            fileData = file;
-        } else {
-            fileUrl = link;
-            fileName = 'Public Link';
-            fileSize = 'External URL';
+            // Add to state and save to DB
+            projectsList.unshift(newProject);
+            saveProjectToDB(newProject);
+            
+            // Reset form & inputs
+            uploadForm.reset();
+            fileNameDisplay.textContent = 'Choose file...';
+            updateFileInputConfig();
+            
+            // Rerender feed
+            renderFeed();
+            
+            // Scroll to new project
+            const targetCard = document.getElementById(newProject.id);
+            if (targetCard) {
+                targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+            return newProject;
         }
-        
-        const newProject = {
-            id: 'uploaded-' + Date.now(),
-            title: title,
-            type: category,
-            categoryName: getCategoryName(category),
-            description: description,
-            fileName: fileName,
-            fileSize: fileSize,
-            fileUrl: fileUrl,
-            fileData: fileData // Store File Blob in IndexedDB!
-        };
 
-        // Add to state and save to DB
-        projectsList.unshift(newProject);
-        saveProjectToDB(newProject);
-        
-        // Reset form & inputs
-        uploadForm.reset();
-        fileNameDisplay.textContent = 'Choose file...';
-        updateFileInputConfig();
-        
-        // Rerender feed
-        renderFeed();
-        
-        // Scroll to new project
-        const targetCard = document.getElementById(newProject.id);
-        if (targetCard) {
-            targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        if (sharePublicly) {
+            if (file) {
+                uploadFileToPublic(file, (publicUrl) => {
+                    const savedLocal = saveLocalAndRender(URL.createObjectURL(file), file.name, formatBytes(file.size), file);
+                    publishToPublicBucket(savedLocal.title, savedLocal.type, savedLocal.description, publicUrl, file.name, formatBytes(file.size));
+                }, (err) => {
+                    alert('Failed to upload file to the public server: ' + err.message + '. Saving locally only.');
+                    saveLocalAndRender(URL.createObjectURL(file), file.name, formatBytes(file.size), file);
+                });
+            } else {
+                const savedLocal = saveLocalAndRender(link, 'Public Link', 'External URL', null);
+                publishToPublicBucket(savedLocal.title, savedLocal.type, savedLocal.description, link, 'Public Link', 'External URL');
+            }
+        } else {
+            if (file) {
+                saveLocalAndRender(URL.createObjectURL(file), file.name, formatBytes(file.size), file);
+            } else {
+                saveLocalAndRender(link, 'Public Link', 'External URL', null);
+            }
         }
     });
 
@@ -210,7 +219,9 @@ document.addEventListener('DOMContentLoaded', () => {
     function saveProjectToDB(project) {
         if (!db) return;
         const dbCopy = { ...project };
-        delete dbCopy.fileUrl; // Regenerate on load
+        if (dbCopy.fileUrl && dbCopy.fileUrl.startsWith('blob:')) {
+            delete dbCopy.fileUrl; // Regenerate on load
+        }
         
         const transaction = db.transaction([storeName], "readwrite");
         const store = transaction.objectStore(storeName);
@@ -222,6 +233,91 @@ document.addEventListener('DOMContentLoaded', () => {
         const transaction = db.transaction([storeName], "readwrite");
         const store = transaction.objectStore(storeName);
         store.delete(projectId);
+    }
+
+    // Helper to upload files directly to tmpfiles.org public hosting (48-hour expiration)
+    function uploadFileToPublic(file, successCallback, errorCallback) {
+        const overlay = document.getElementById('upload-overlay');
+        if (overlay) {
+            overlay.style.display = 'flex';
+        }
+
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('expire', '172800'); // 48 hours in seconds (172800)
+
+        fetch('https://tmpfiles.org/api/v1/upload', {
+            method: 'POST',
+            body: formData
+        })
+        .then(res => {
+            if (!res.ok) {
+                throw new Error('Upload failed with status ' + res.status);
+            }
+            return res.json();
+        })
+        .then(resData => {
+            if (resData.status === 'success' && resData.data && resData.data.url) {
+                const rawUrl = resData.data.url;
+                // Convert to direct download/embed link (replace view URL with direct download URL)
+                const directUrl = rawUrl.replace('https://tmpfiles.org/', 'https://tmpfiles.org/dl/');
+                successCallback(directUrl);
+            } else {
+                throw new Error(resData.message || 'Unknown response format');
+            }
+        })
+        .catch(err => {
+            console.error('Upload error:', err);
+            errorCallback(err);
+        })
+        .finally(() => {
+            if (overlay) {
+                overlay.style.display = 'none';
+            }
+        });
+    }
+
+    // Helper to publish a project configuration to the public database bucket (kvdb.io)
+    function publishToPublicBucket(title, type, description, fileUrl, fileName, fileSize) {
+        const publicItem = {
+            id: 'public-' + Date.now(),
+            title: title,
+            type: type,
+            categoryName: 'Shared ' + getCategoryName(type),
+            description: description,
+            fileName: fileName || 'Public Link',
+            fileSize: fileSize || 'External Link',
+            fileUrl: fileUrl
+        };
+
+        // Prevent duplicates in public shared feed
+        if (publicProjectsList.some(p => p.title === publicItem.title && p.fileUrl === publicItem.fileUrl)) {
+            alert('This project is already shared publicly!');
+            return;
+        }
+
+        publicProjectsList.unshift(publicItem);
+
+        fetch(PUBLIC_DB_URL, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(publicProjectsList)
+        })
+        .then(res => {
+            if (res.ok) {
+                alert('Successfully published to the Public Shared tab! (Note: Uploaded files will be stored publicly for 48 hours)');
+                const publicTabBtn = document.querySelector('.filter-tab-btn[data-filter="public"]');
+                if (publicTabBtn) {
+                    publicTabBtn.click();
+                }
+            } else {
+                alert('Failed to publish to the public database.');
+            }
+        })
+        .catch(err => {
+            console.error("Error publishing project:", err);
+            alert('Database connection error.');
+        });
     }
 
     // Fetch shared projects from kvdb database
@@ -250,51 +346,25 @@ document.addEventListener('DOMContentLoaded', () => {
         const project = projectsList.find(p => p.id === projectId);
         if (!project) return;
 
-        if (project.fileUrl && project.fileUrl.startsWith('blob:')) {
-            alert('This project is using a local file from your computer. To share it publicly, please upload the file to Google Drive, YouTube, or OneDrive first, and paste the shareable link in the "Public URL" box when adding the project!');
-            return;
-        }
-
         if (confirm('Do you want to publish this project to the Public Shared tab for everyone to see?')) {
-            const publicItem = {
-                id: 'public-' + Date.now(),
-                title: project.title,
-                type: project.type,
-                categoryName: 'Shared ' + getCategoryName(project.type),
-                description: project.description,
-                fileName: project.fileName || 'Public Link',
-                fileSize: project.fileSize || 'External Link',
-                fileUrl: project.fileUrl
-            };
+            if (project.fileData && (project.fileData instanceof Blob || project.fileData instanceof File)) {
+                // If it is a local file, upload it to the public server first
+                uploadFileToPublic(project.fileData, (publicUrl) => {
+                    // Update project with public URL so it persists
+                    project.fileUrl = publicUrl;
+                    saveProjectToDB(project);
+                    renderFeed();
 
-            // Prevent duplicates
-            if (publicProjectsList.some(p => p.title === publicItem.title && p.fileUrl === publicItem.fileUrl)) {
-                alert('This project is already shared publicly!');
-                return;
+                    publishToPublicBucket(project.title, project.type, project.description, publicUrl, project.fileName, project.fileSize);
+                }, (err) => {
+                    alert('Failed to upload file to the public server: ' + err.message);
+                });
+            } else if (project.fileUrl && !project.fileUrl.startsWith('blob:')) {
+                // If it is already a public link
+                publishToPublicBucket(project.title, project.type, project.description, project.fileUrl, project.fileName, project.fileSize);
+            } else {
+                alert('Cannot share this project: No file data or URL found.');
             }
-
-            publicProjectsList.unshift(publicItem);
-
-            fetch(PUBLIC_DB_URL, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(publicProjectsList)
-            })
-            .then(res => {
-                if (res.ok) {
-                    alert('Successfully published to the Public Shared tab!');
-                    const publicTabBtn = document.querySelector('.filter-tab-btn[data-filter="public"]');
-                    if (publicTabBtn) {
-                        publicTabBtn.click();
-                    }
-                } else {
-                    alert('Failed to publish to the public database.');
-                }
-            })
-            .catch(err => {
-                console.error("Error publishing project:", err);
-                alert('Database connection error.');
-            });
         }
     };
 
@@ -321,6 +391,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             console.error("Error creating Object URL for project:", p.id, err);
                             p.fileUrl = '';
                         }
+                    } else if (p.fileUrl) {
+                        // Keep publicUrl/external URL as is
                     } else {
                         p.fileUrl = '';
                     }
