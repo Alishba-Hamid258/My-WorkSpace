@@ -305,30 +305,47 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 `;
             } else if (project.type === 'presentation') {
-                previewHtml = `
-                    <div class="project-preview-container">
-                        <div class="document-preview-box" style="background: radial-gradient(circle, #221a2e 0%, #06050e 100%)">
-                            <i class="fa-solid fa-file-powerpoint" style="color: var(--accent-pink); text-shadow: 0 0 20px rgba(255, 0, 127, 0.5)"></i>
-                            <div>
-                                <h5 class="doc-meta-title">${project.fileName}</h5>
-                                <p class="doc-meta-size">Interactive Slides Presentation (${project.fileSize || 'Local File'})</p>
+                // If it is a PDF presentation, render it live in an iframe, otherwise fallback to details box
+                if (project.fileName && project.fileName.toLowerCase().endsWith('.pdf')) {
+                    previewHtml = `
+                        <div class="project-preview-container">
+                            <iframe src="${project.fileUrl}" style="width:100%; height:100%; border:none;" title="${project.title}"></iframe>
+                        </div>
+                    `;
+                } else {
+                    previewHtml = `
+                        <div class="project-preview-container">
+                            <div class="document-preview-box" style="background: radial-gradient(circle, #221a2e 0%, #06050e 100%)">
+                                <i class="fa-solid fa-file-powerpoint" style="color: var(--accent-pink); text-shadow: 0 0 20px rgba(255, 0, 127, 0.5)"></i>
+                                <div>
+                                    <h5 class="doc-meta-title">${project.fileName}</h5>
+                                    <p class="doc-meta-size">Interactive Slides Presentation (${project.fileSize || 'Local File'})</p>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                `;
+                    `;
+                }
             } else {
-                // Documents / default
-                previewHtml = `
-                    <div class="project-preview-container">
-                        <div class="document-preview-box">
-                            <i class="fa-solid fa-file-pdf"></i>
-                            <div>
-                                <h5 class="doc-meta-title">${project.fileName}</h5>
-                                <p class="doc-meta-size">Workspace Resource (${project.fileSize || 'Local File'})</p>
+                // Documents / default (PDF and TXT render in iframe, binary files show download card)
+                if (project.fileName && (project.fileName.toLowerCase().endsWith('.pdf') || project.fileName.toLowerCase().endsWith('.txt'))) {
+                    previewHtml = `
+                        <div class="project-preview-container">
+                            <iframe src="${project.fileUrl}" style="width:100%; height:100%; border:none;" title="${project.title}"></iframe>
+                        </div>
+                    `;
+                } else {
+                    previewHtml = `
+                        <div class="project-preview-container">
+                            <div class="document-preview-box">
+                                <i class="fa-solid fa-file-pdf"></i>
+                                <div>
+                                    <h5 class="doc-meta-title">${project.fileName}</h5>
+                                    <p class="doc-meta-size">Workspace Resource (${project.fileSize || 'Local File'})</p>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                `;
+                    `;
+                }
             }
 
             // Put card together
