@@ -206,9 +206,73 @@ document.addEventListener('DOMContentLoaded', () => {
         store.delete(projectId);
     }
 
+    const publicFilesToCheck = [
+        {
+            id: 'public-1-manual-video',
+            url: 'manual_video.mp4',
+            title: 'Manual Video Editing (CapCut)',
+            type: 'video',
+            categoryName: 'Shared Video',
+            description: 'My manual video project edited using CapCut. Showcases timeline cuts, transitions, color filters, and audio syncing.'
+        },
+        {
+            id: 'public-2-ai-video',
+            url: 'ai_video.mp4',
+            title: 'AI Generated Video',
+            type: 'video',
+            categoryName: 'Shared Video',
+            description: 'My AI-generated video project. Created using generative text-to-video models and AI transitions.'
+        },
+        {
+            id: 'public-3-presentation',
+            url: 'presentation.pdf',
+            title: 'Academic Presentation Slides',
+            type: 'presentation',
+            categoryName: 'Shared Slide Deck',
+            description: 'My slide deck presentation for university coursework. Uploaded directly as a PDF presentation.'
+        },
+        {
+            id: 'public-4-report',
+            url: 'report.pdf',
+            title: 'Project Report / Document',
+            type: 'document',
+            categoryName: 'Shared Report',
+            description: 'The final laboratory report and documentation detailing the project outcomes and methodologies.'
+        }
+    ];
+
+    function checkAndLoadPublicFiles() {
+        publicFilesToCheck.forEach(fileInfo => {
+            fetch(fileInfo.url, { method: 'HEAD' })
+                .then(res => {
+                    if (res.ok) {
+                        const publicProject = {
+                            id: fileInfo.id,
+                            title: fileInfo.title,
+                            type: fileInfo.type,
+                            categoryName: fileInfo.categoryName,
+                            description: fileInfo.description,
+                            fileName: fileInfo.url,
+                            fileSize: 'Hosted on GitHub',
+                            fileUrl: fileInfo.url
+                        };
+                        
+                        if (!projectsList.some(p => p.id === publicProject.id)) {
+                            projectsList.push(publicProject);
+                            // Sort projects by ID (u-uploaded at top, p-public below)
+                            projectsList.sort((a, b) => b.id.localeCompare(a.id));
+                            renderFeed();
+                        }
+                    }
+                })
+                .catch(err => console.log("Public file check failed:", fileInfo.url, err));
+        });
+    }
+
     function loadProjectsFromDB() {
         if (!db) {
             initPreloadedProjects();
+            checkAndLoadPublicFiles();
             return;
         }
         
@@ -237,10 +301,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 projectsList.sort((a, b) => b.id.localeCompare(a.id));
                 renderFeed();
             }
+            // Check for uploaded files in the GitHub repository
+            checkAndLoadPublicFiles();
         };
         
         request.onerror = function() {
             initPreloadedProjects();
+            checkAndLoadPublicFiles();
         };
     }
 
@@ -270,17 +337,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Delete project from feed logic
     window.deleteProject = function(projectId) {
-        if (confirm('Are you sure you want to delete this project?')) {
-            const index = projectsList.findIndex(p => p.id === projectId);
-            if (index !== -1) {
-                const project = projectsList[index];
-                if (project.fileUrl && project.fileUrl.startsWith('blob:')) {
-                    URL.revokeObjectURL(project.fileUrl);
-                }
-                deleteProjectFromDB(projectId);
+        const index = projectsList.findIndex(p => p.id === projectId);
+        if (index === -1) return;
+
+        const project = projectsList[index];
+        
+        // If it is a public file hosted on GitHub, explain how to delete permanently
+        if (project.id.startsWith('public-')) {
+            if (confirm('This file is hosted publicly in your GitHub repository. Hiding it here will only remove it from your screen temporarily until you refresh. To delete it permanently, you must delete the file directly from your GitHub repository folder. Do you want to hide it now?')) {
                 projectsList.splice(index, 1);
                 renderFeed();
             }
+            return;
+        }
+
+        if (confirm('Are you sure you want to delete this project?')) {
+            if (project.fileUrl && project.fileUrl.startsWith('blob:')) {
+                URL.revokeObjectURL(project.fileUrl);
+            }
+            deleteProjectFromDB(projectId);
+            projectsList.splice(index, 1);
+            renderFeed();
         }
     };
 
