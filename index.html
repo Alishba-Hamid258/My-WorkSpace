@@ -88,13 +88,19 @@
                     <div class="form-group">
                         <label for="project-file" id="file-label-text">Select File</label>
                         <div class="file-upload-wrapper">
-                            <input type="file" id="project-file" name="file" class="file-input-hidden" required>
+                            <input type="file" id="project-file" name="file" class="file-input-hidden">
                             <label for="project-file" class="file-upload-btn" id="custom-file-upload-btn">
                                 <i class="fa-solid fa-folder-open"></i>
                                 <span id="file-name-display">Choose Video, PPT, or Image...</span>
                             </label>
                         </div>
                         <span class="file-help-text" id="file-help-text-node">Accepted file types depend on Category. Max size 100MB.</span>
+                    </div>
+
+                    <div class="form-group" style="margin-top: 0.25rem; margin-bottom: 0.5rem;">
+                        <label for="project-link">OR paste Public URL (Google Drive, YouTube, OneDrive)</label>
+                        <input type="text" id="project-link" name="link" placeholder="https://drive.google.com/... or https://youtube.com/...">
+                        <span class="file-help-text">Paste a public sharing link if you want to share this project publicly!</span>
                     </div>
 
                     <div class="form-group">
@@ -133,6 +139,9 @@
                 </button>
                 <button class="filter-tab-btn" data-filter="document">
                     <i class="fa-solid fa-file-pdf"></i> Documents
+                </button>
+                <button class="filter-tab-btn" data-filter="public" style="border-color: rgba(0, 242, 254, 0.25);">
+                    <i class="fa-solid fa-globe" style="color: var(--accent-blue);"></i> Public Shared
                 </button>
             </div>
 

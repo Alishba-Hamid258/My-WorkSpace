@@ -844,6 +844,33 @@ h1, h2, h3, h4, h5, h6 {
     transform: scale(0.95);
 }
 
+/* Dynamic Card Share Button */
+.share-btn {
+    background: rgba(0, 242, 254, 0.08);
+    border: 1px solid rgba(0, 242, 254, 0.2);
+    color: var(--accent-blue);
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: background var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.share-btn:hover {
+    background: rgba(0, 242, 254, 0.2);
+    border-color: var(--accent-blue);
+    transform: scale(1.08);
+    box-shadow: 0 0 15px rgba(0, 242, 254, 0.25);
+}
+
+.share-btn:active {
+    transform: scale(0.95);
+}
+
 /* Password Gate Overlay */
 .password-gate-overlay {
     position: fixed;
