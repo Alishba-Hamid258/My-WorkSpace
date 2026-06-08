@@ -260,7 +260,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (project.type === 'video') {
                 previewHtml = `
                     <div class="project-preview-container">
-                        <video controls style="width:100%; display:block;" src="${project.fileUrl}"></video>
+                        <video controls src="${project.fileUrl}"></video>
                     </div>
                 `;
             } else if (project.type === 'image') {

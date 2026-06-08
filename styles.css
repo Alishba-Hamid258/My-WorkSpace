@@ -499,16 +499,28 @@ h1, h2, h3, h4, h5, h6 {
     overflow: hidden;
     margin-bottom: 1.5rem;
     border: 1px solid rgba(255, 255, 255, 0.05);
-    background: #000;
+    background: #04030a;
     position: relative;
+    height: 480px; /* Bounded height for vertical scaling */
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 /* Image preview structure */
 .project-image-preview {
     width: 100%;
-    height: auto;
-    max-height: 480px;
-    object-fit: cover;
+    height: 100%;
+    object-fit: contain; /* Preserves aspect ratio without cropping */
+    display: block;
+}
+
+/* Bounded Video Preview */
+.project-preview-container video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain; /* Fits both vertical and landscape videos beautifully */
+    background: #04030a;
     display: block;
 }
 
