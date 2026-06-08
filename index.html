@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Academic Project Portfolio & Media Hub</title>
+    <!-- Google Fonts: Outfit (headings) and Inter (body) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <script src="app.js" defer></script>
+</head>
+<body>
+    <!-- Abstract Background Gradients -->
+    <div class="bg-glow bg-glow-1"></div>
+    <div class="bg-glow bg-glow-2"></div>
+    <div class="bg-glow bg-glow-3"></div>
+
+    <!-- Main Navigation -->
+    <nav class="navbar" id="main-navbar">
+        <div class="nav-container">
+            <a href="#" class="nav-logo" id="nav-logo-link">
+                <span class="logo-accent">Uni</span>Portfolio
+            </a>
+            <div class="nav-profile">
+                <div class="profile-details">
+                    <span class="profile-name">My Workspace</span>
+                    <span class="profile-dept">Academic Projects</span>
+                </div>
+                <div class="profile-avatar">
+                    <i class="fa-solid fa-user-graduate"></i>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Split Pane Layout Container -->
+    <main class="split-container">
+        <!-- Left Panel: Upload Dashboard -->
+        <aside class="sidebar-panel">
+            <!-- Course Summary Card -->
+            <div class="glass-card course-summary-card">
+                <div class="course-header">
+                    <span class="badge">Session 2026</span>
+                    <h2>My Project Hub</h2>
+                </div>
+                <p class="course-desc">
+                    A premium digital workspace to upload, showcase, and download your academic projects, presentations, videos, and documents.
+                </p>
+                <div class="course-stats">
+                    <div class="stat-item">
+                        <span class="stat-val" id="project-count-val">2</span>
+                        <span class="stat-label">Projects</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-val">100%</span>
+                        <span class="stat-label">Aligned</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Upload Project Card Form -->
+            <div class="glass-card upload-card">
+                <div class="card-header">
+                    <i class="fa-solid fa-cloud-arrow-up form-icon"></i>
+                    <h3>Add New Media Project</h3>
+                </div>
+                
+                <form id="project-upload-form" class="upload-form">
+                    <div class="form-group">
+                        <label for="project-title">Project Title</label>
+                        <input type="text" id="project-title" name="title" placeholder="e.g., Vector Shapes Lab" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="project-category">Category</label>
+                        <select id="project-category" name="category" required>
+                            <option value="video">Video Presentation / Clip</option>
+                            <option value="presentation">Presentation / PPT</option>
+                            <option value="image">Image / Graphic Design</option>
+                            <option value="document">Report / Document</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="project-file" id="file-label-text">Select File</label>
+                        <div class="file-upload-wrapper">
+                            <input type="file" id="project-file" name="file" class="file-input-hidden" required>
+                            <label for="project-file" class="file-upload-btn" id="custom-file-upload-btn">
+                                <i class="fa-solid fa-folder-open"></i>
+                                <span id="file-name-display">Choose Video, PPT, or Image...</span>
+                            </label>
+                        </div>
+                        <span class="file-help-text" id="file-help-text-node">Accepted file types depend on Category. Max size 100MB.</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="project-description">Project Description & Reflections</label>
+                        <textarea id="project-description" name="description" rows="5" placeholder="Write a detailed explanation of your tools used, methodologies, and final learnings..." required></textarea>
+                    </div>
+
+                    <button type="submit" class="submit-btn" id="btn-add-project">
+                        <span>Publish to Portfolio Feed</span>
+                        <i class="fa-solid fa-paper-plane"></i>
+                    </button>
+                </form>
+            </div>
+        </aside>
+
+        <!-- Right Panel: Live Feed -->
+        <section class="feed-panel">
+            <header class="feed-header">
+                <h1>Academic Workspace & Project Feed</h1>
+                <p>Upload and showcase your academic works using the dashboard on the left.</p>
+            </header>
+
+            <div class="feed-container" id="project-feed">
+                <!-- Preloaded Projects will be rendered dynamically here via JS, starting with:
+                     - Manual vs. AI Video Editing Comparison Showcase
+                     - Computer Graphics Theory & Vector Design
+                -->
+            </div>
+        </section>
+    </main>
+
+    <footer class="main-footer">
+        <div class="footer-container">
+            <p>&copy; 2026 Academic Projects Portfolio. Built with vanilla tech & premium glassmorphism.</p>
+        </div>
+    </footer>
+</body>
+</html>
