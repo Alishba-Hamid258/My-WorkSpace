@@ -497,11 +497,13 @@ h1, h2, h3, h4, h5, h6 {
 .project-preview-container {
     border-radius: var(--radius-md);
     overflow: hidden;
-    margin-bottom: 1.5rem;
+    margin: 0 auto 1.5rem auto; /* Centered with bottom margin */
     border: 1px solid rgba(255, 255, 255, 0.05);
     background: #04030a;
     position: relative;
-    height: 480px; /* Bounded height for vertical scaling */
+    width: 100%;
+    max-width: 600px; /* Bounded width to keep scale neat */
+    height: 340px; /* Bounded height for a balanced default size */
     display: flex;
     align-items: center;
     justify-content: center;
