@@ -844,6 +844,56 @@ h1, h2, h3, h4, h5, h6 {
     transform: scale(0.95);
 }
 
+/* Password Gate Overlay */
+.password-gate-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(7, 6, 15, 0.85);
+    backdrop-filter: blur(25px);
+    -webkit-backdrop-filter: blur(25px);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.lock-card {
+    width: 90%;
+    max-width: 400px;
+    text-align: center;
+    padding: 3rem 2rem;
+    box-shadow: 0 0 50px rgba(155, 81, 224, 0.25);
+    border-color: rgba(155, 81, 224, 0.3) !important;
+}
+
+.lock-icon {
+    font-size: 3rem;
+    color: var(--accent-purple);
+    text-shadow: 0 0 20px rgba(155, 81, 224, 0.5);
+    margin-bottom: 1.25rem;
+}
+
+.lock-card h2 {
+    font-size: 1.8rem;
+    margin-bottom: 0.5rem;
+}
+
+.lock-card p {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    margin-bottom: 1.75rem;
+}
+
+.password-error-msg {
+    color: var(--accent-pink);
+    font-size: 0.8rem;
+    margin-top: 0.75rem;
+    font-weight: 600;
+}
+
 /* 9. Footer Component */
 .main-footer {
     border-top: 1px solid var(--glass-border);

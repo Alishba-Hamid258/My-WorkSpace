@@ -15,6 +15,35 @@ document.addEventListener('DOMContentLoaded', () => {
     const fileHelpTextNode = document.getElementById('file-help-text-node');
     const filterTabBtns = document.querySelectorAll('.filter-tab-btn');
 
+    // Access Password Configuration
+    const ACCESS_PASSWORD = 'myworkspace258';
+
+    // Password Gate DOM Elements
+    const passwordGateOverlay = document.getElementById('password-gate-overlay');
+    const passwordGateForm = document.getElementById('password-gate-form');
+    const passwordInput = document.getElementById('password-input');
+    const passwordError = document.getElementById('password-error');
+
+    // Check Password session state
+    if (sessionStorage.getItem('portfolio_unlocked') === 'true') {
+        passwordGateOverlay.style.display = 'none';
+    } else {
+        passwordGateForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            if (passwordInput.value === ACCESS_PASSWORD) {
+                sessionStorage.setItem('portfolio_unlocked', 'true');
+                passwordGateOverlay.style.transition = 'opacity 0.4s ease';
+                passwordGateOverlay.style.opacity = '0';
+                setTimeout(() => {
+                    passwordGateOverlay.style.display = 'none';
+                }, 400);
+            } else {
+                passwordError.style.display = 'block';
+                passwordInput.value = '';
+            }
+        });
+    }
+
     // Portfolio State
     let projectsList = [];
     let currentFilter = 'all';
@@ -124,11 +153,13 @@ document.addEventListener('DOMContentLoaded', () => {
             description: description,
             fileName: file.name,
             fileSize: formatBytes(file.size),
-            fileUrl: objectUrl
+            fileUrl: objectUrl,
+            fileData: file // Store File Blob in IndexedDB!
         };
 
-        // Add to the front of the list
+        // Add to state and save to DB
         projectsList.unshift(newProject);
+        saveProjectToDB(newProject);
         
         // Reset form & inputs
         uploadForm.reset();
@@ -138,7 +169,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Rerender feed
         renderFeed();
         
-        // Scroll to new project with smooth behavior
+        // Scroll to new project
         const targetCard = document.getElementById(newProject.id);
         if (targetCard) {
             targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -154,6 +185,82 @@ document.addEventListener('DOMContentLoaded', () => {
             case 'document': return 'Academic Report / Document';
             default: return 'Project Workspace Resource';
         }
+    }
+
+    // -------------------------------------------------------------
+    // IndexedDB Database Helpers for Local Persistent Storage
+    // -------------------------------------------------------------
+    const dbName = "AcademicPortfolioDB";
+    const storeName = "projects";
+    let db = null;
+
+    function openDatabase(callback) {
+        const request = indexedDB.open(dbName, 1);
+        
+        request.onupgradeneeded = function(e) {
+            const database = e.target.result;
+            if (!database.objectStoreNames.contains(storeName)) {
+                database.createObjectStore(storeName, { keyPath: "id" });
+            }
+        };
+
+        request.onsuccess = function(e) {
+            db = e.target.result;
+            if (callback) callback();
+        };
+
+        request.onerror = function(e) {
+            console.error("IndexedDB error:", e);
+            if (callback) callback();
+        };
+    }
+
+    function saveProjectToDB(project) {
+        if (!db) return;
+        const dbCopy = { ...project };
+        delete dbCopy.fileUrl; // Regenerate on load
+        
+        const transaction = db.transaction([storeName], "readwrite");
+        const store = transaction.objectStore(storeName);
+        store.put(dbCopy);
+    }
+
+    function deleteProjectFromDB(projectId) {
+        if (!db) return;
+        const transaction = db.transaction([storeName], "readwrite");
+        const store = transaction.objectStore(storeName);
+        store.delete(projectId);
+    }
+
+    function loadProjectsFromDB() {
+        if (!db) {
+            initPreloadedProjects();
+            return;
+        }
+        
+        const transaction = db.transaction([storeName], "readonly");
+        const store = transaction.objectStore(storeName);
+        const request = store.getAll();
+        
+        request.onsuccess = function(e) {
+            const saved = e.target.result || [];
+            if (saved.length === 0) {
+                initPreloadedProjects();
+            } else {
+                projectsList = saved.map(p => {
+                    if (p.fileData) {
+                        p.fileUrl = URL.createObjectURL(p.fileData);
+                    }
+                    return p;
+                });
+                projectsList.sort((a, b) => b.id.localeCompare(a.id));
+                renderFeed();
+            }
+        };
+        
+        request.onerror = function() {
+            initPreloadedProjects();
+        };
     }
 
     // Toggle logic for CapCut vs AI video player tabs
@@ -189,6 +296,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (project.fileUrl && project.fileUrl.startsWith('blob:')) {
                     URL.revokeObjectURL(project.fileUrl);
                 }
+                deleteProjectFromDB(projectId);
                 projectsList.splice(index, 1);
                 renderFeed();
             }
@@ -385,7 +493,9 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Initialize forms and preload projects
+    // Initialize forms and load projects from browser DB
     updateFileInputConfig();
-    initPreloadedProjects();
+    openDatabase(() => {
+        loadProjectsFromDB();
+    });
 });
