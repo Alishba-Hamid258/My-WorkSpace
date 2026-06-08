@@ -238,43 +238,67 @@ document.addEventListener('DOMContentLoaded', () => {
     // Helper to upload files directly to tmpfiles.org public hosting (48-hour expiration)
     function uploadFileToPublic(file, successCallback, errorCallback) {
         const overlay = document.getElementById('upload-overlay');
+        const progressBarContainer = document.getElementById('upload-progress-bar-container');
+        const progressBar = document.getElementById('upload-progress-bar');
+        const progressTitle = overlay ? overlay.querySelector('h3') : null;
+        
         if (overlay) {
             overlay.style.display = 'flex';
+            if (progressBarContainer) progressBarContainer.style.display = 'block';
+            if (progressBar) progressBar.style.width = '0%';
+            if (progressTitle) progressTitle.textContent = "Uploading to Public Servers (0%)";
+        }
+
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', 'https://tmpfiles.org/api/v1/upload');
+
+        // Track upload progress in real-time
+        xhr.upload.onprogress = function(e) {
+            if (e.lengthComputable) {
+                const percentComplete = Math.round((e.loaded / e.total) * 100);
+                if (progressBar) progressBar.style.width = percentComplete + '%';
+                if (progressTitle) progressTitle.textContent = "Uploading to Public Servers (" + percentComplete + "%)";
+            }
+        };
+
+        xhr.onload = function() {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                try {
+                    const resData = JSON.parse(xhr.responseText);
+                    if (resData.status === 'success' && resData.data && resData.data.url) {
+                        const rawUrl = resData.data.url;
+                        // Convert to direct download/embed link (replace view URL with direct download URL)
+                        const directUrl = rawUrl.replace('https://tmpfiles.org/', 'https://tmpfiles.org/dl/');
+                        successCallback(directUrl);
+                    } else {
+                        errorCallback(new Error(resData.message || 'Unknown response format'));
+                    }
+                } catch (err) {
+                    errorCallback(new Error('Failed to parse response: ' + err.message));
+                }
+            } else {
+                errorCallback(new Error('Upload failed with status ' + xhr.status));
+            }
+            hideOverlay();
+        };
+
+        xhr.onerror = function() {
+            errorCallback(new Error('Network error during upload.'));
+            hideOverlay();
+        };
+
+        function hideOverlay() {
+            if (overlay) overlay.style.display = 'none';
+            if (progressBarContainer) progressBarContainer.style.display = 'none';
+            if (progressBar) progressBar.style.width = '0%';
+            if (progressTitle) progressTitle.textContent = "Uploading to Public Servers";
         }
 
         const formData = new FormData();
         formData.append('file', file);
         formData.append('expire', '172800'); // 48 hours in seconds (172800)
 
-        fetch('https://tmpfiles.org/api/v1/upload', {
-            method: 'POST',
-            body: formData
-        })
-        .then(res => {
-            if (!res.ok) {
-                throw new Error('Upload failed with status ' + res.status);
-            }
-            return res.json();
-        })
-        .then(resData => {
-            if (resData.status === 'success' && resData.data && resData.data.url) {
-                const rawUrl = resData.data.url;
-                // Convert to direct download/embed link (replace view URL with direct download URL)
-                const directUrl = rawUrl.replace('https://tmpfiles.org/', 'https://tmpfiles.org/dl/');
-                successCallback(directUrl);
-            } else {
-                throw new Error(resData.message || 'Unknown response format');
-            }
-        })
-        .catch(err => {
-            console.error('Upload error:', err);
-            errorCallback(err);
-        })
-        .finally(() => {
-            if (overlay) {
-                overlay.style.display = 'none';
-            }
-        });
+        xhr.send(formData);
     }
 
     // Helper to publish a project configuration to the public database bucket (kvdb.io)
