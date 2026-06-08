@@ -405,10 +405,40 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    // Helper to get embeddable iframe URL for YouTube or Google Drive share links
+    function getEmbedUrl(url) {
+        if (!url) return '';
+        
+        // YouTube Watch Link
+        const ytReg = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+        const ytMatch = url.match(ytReg);
+        if (ytMatch && ytMatch[2].length === 11) {
+            return `https://www.youtube.com/embed/${ytMatch[2]}`;
+        }
+        
+        // YouTube Shorts Link
+        if (url.includes('youtube.com/shorts/')) {
+            const parts = url.split('/shorts/');
+            if (parts[1]) {
+                const shortsId = parts[1].split('?')[0];
+                return `https://www.youtube.com/embed/${shortsId}`;
+            }
+        }
+
+        // Google Drive Share Link
+        if (url.includes('drive.google.com')) {
+            const driveMatch = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+            if (driveMatch && driveMatch[1]) {
+                return `https://drive.google.com/file/d/${driveMatch[1]}/preview`;
+            }
+        }
+        
+        return url;
+    }
+
     // Render feed HTML based on project array state
     function renderFeed() {
         projectFeed.innerHTML = '';
-        projectCountVal.textContent = projectsList.length;
 
         // Filter list
         let filteredList = projectsList;
@@ -417,6 +447,8 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (currentFilter !== 'all') {
             filteredList = projectsList.filter(p => p.type === currentFilter);
         }
+
+        projectCountVal.textContent = filteredList.length;
 
         if (filteredList.length === 0) {
             let emptyMsg = 'Your workspace is empty. Use the sidebar form on the left to select a project file (Video, PPT, Image, or Document), enter a description, and publish it dynamically here!';
@@ -435,7 +467,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        projectsList.forEach(project => {
+        filteredList.forEach(project => {
             const card = document.createElement('article');
             card.className = 'glass-card project-card';
             card.id = project.id;
@@ -507,11 +539,20 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 `;
             } else if (project.type === 'video') {
-                previewHtml = `
-                    <div class="project-preview-container">
-                        <video controls src="${project.fileUrl}"></video>
-                    </div>
-                `;
+                const embedUrl = getEmbedUrl(project.fileUrl);
+                if (embedUrl.includes('youtube.com/embed') || embedUrl.includes('drive.google.com/file/d')) {
+                    previewHtml = `
+                        <div class="project-preview-container">
+                            <iframe src="${embedUrl}" style="width:100%; height:100%; border:none;" allowfullscreen title="${project.title}"></iframe>
+                        </div>
+                    `;
+                } else {
+                    previewHtml = `
+                        <div class="project-preview-container">
+                            <video controls src="${project.fileUrl}"></video>
+                        </div>
+                    `;
+                }
             } else if (project.type === 'image') {
                 previewHtml = `
                     <div class="project-preview-container">
@@ -519,11 +560,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 `;
             } else if (project.type === 'presentation') {
-                // If it is a PDF presentation, render it live in an iframe, otherwise fallback to details box
-                if (project.fileName && project.fileName.toLowerCase().endsWith('.pdf')) {
+                const embedUrl = getEmbedUrl(project.fileUrl);
+                // If PDF presentation or Google Drive link, render live in iframe
+                if (embedUrl.includes('drive.google.com') || (project.fileName && project.fileName.toLowerCase().endsWith('.pdf')) || embedUrl.toLowerCase().endsWith('.pdf')) {
                     previewHtml = `
                         <div class="project-preview-container">
-                            <iframe src="${project.fileUrl}" style="width:100%; height:100%; border:none;" title="${project.title}"></iframe>
+                            <iframe src="${embedUrl}" style="width:100%; height:100%; border:none;" title="${project.title}"></iframe>
                         </div>
                     `;
                 } else {
@@ -540,11 +582,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     `;
                 }
             } else {
-                // Documents / default (PDF and TXT render in iframe, binary files show download card)
-                if (project.fileName && (project.fileName.toLowerCase().endsWith('.pdf') || project.fileName.toLowerCase().endsWith('.txt'))) {
+                const embedUrl = getEmbedUrl(project.fileUrl);
+                // PDF, TXT or Google Drive render in iframe, binary files show download card
+                if (embedUrl.includes('drive.google.com') || (project.fileName && (project.fileName.toLowerCase().endsWith('.pdf') || project.fileName.toLowerCase().endsWith('.txt'))) || embedUrl.toLowerCase().endsWith('.pdf') || embedUrl.toLowerCase().endsWith('.txt')) {
                     previewHtml = `
                         <div class="project-preview-container">
-                            <iframe src="${project.fileUrl}" style="width:100%; height:100%; border:none;" title="${project.title}"></iframe>
+                            <iframe src="${embedUrl}" style="width:100%; height:100%; border:none;" title="${project.title}"></iframe>
                         </div>
                     `;
                 } else {
