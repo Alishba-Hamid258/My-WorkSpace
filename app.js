@@ -13,9 +13,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const fileNameDisplay = document.getElementById('file-name-display');
     const fileLabelText = document.getElementById('file-label-text');
     const fileHelpTextNode = document.getElementById('file-help-text-node');
+    const filterTabBtns = document.querySelectorAll('.filter-tab-btn');
 
     // Portfolio State
     let projectsList = [];
+    let currentFilter = 'all';
 
     // Category mapping for accepted file types and labels
     const categoryConfig = {
@@ -87,6 +89,16 @@ document.addEventListener('DOMContentLoaded', () => {
     // Handle Category Select change event
     projectCategorySelect.addEventListener('change', updateFileInputConfig);
 
+    // Filter Tabs click handler
+    filterTabBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            filterTabBtns.forEach(tab => tab.classList.remove('active'));
+            btn.classList.add('active');
+            currentFilter = btn.getAttribute('data-filter');
+            renderFeed();
+        });
+    });
+
     // Form submission
     uploadForm.addEventListener('submit', (e) => {
         e.preventDefault();
@@ -149,7 +161,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const cardNode = document.getElementById(projectId);
         if (!cardNode) return;
 
-        // Toggle buttons
         const buttons = cardNode.querySelectorAll('.tab-btn');
         buttons.forEach(btn => {
             if (btn.getAttribute('data-tab') === tabName) {
@@ -159,7 +170,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // Toggle panels
         const panels = cardNode.querySelectorAll('.video-panel');
         panels.forEach(panel => {
             if (panel.getAttribute('id') === `${projectId}-${tabName}`) {
@@ -170,17 +180,42 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
+    // Delete project from feed logic
+    window.deleteProject = function(projectId) {
+        if (confirm('Are you sure you want to delete this project?')) {
+            const index = projectsList.findIndex(p => p.id === projectId);
+            if (index !== -1) {
+                const project = projectsList[index];
+                if (project.fileUrl && project.fileUrl.startsWith('blob:')) {
+                    URL.revokeObjectURL(project.fileUrl);
+                }
+                projectsList.splice(index, 1);
+                renderFeed();
+            }
+        }
+    };
+
     // Render feed HTML based on project array state
     function renderFeed() {
         projectFeed.innerHTML = '';
         projectCountVal.textContent = projectsList.length;
 
-        if (projectsList.length === 0) {
+        // Filter list
+        let filteredList = projectsList;
+        if (currentFilter !== 'all') {
+            filteredList = projectsList.filter(p => p.type === currentFilter);
+        }
+
+        if (filteredList.length === 0) {
+            let emptyMsg = 'Your workspace is empty. Use the sidebar form on the left to select a project file (Video, PPT, Image, or Document), enter a description, and publish it dynamically here!';
+            if (currentFilter !== 'all') {
+                emptyMsg = `No projects found under the "${getCategoryName(currentFilter)}" tab. Use the form on the left to upload one!`;
+            }
             projectFeed.innerHTML = `
                 <div class="empty-state-card glass-card">
                     <i class="fa-solid fa-folder-open empty-state-icon"></i>
-                    <h3>No Projects Uploaded Yet</h3>
-                    <p>Your workspace is empty. Use the sidebar form on the left to select a project file (Video, PPT, Image, or Document), enter a description, and publish it dynamically here!</p>
+                    <h3>No Projects Found</h3>
+                    <p>${emptyMsg}</p>
                 </div>
             `;
             return;
@@ -298,7 +333,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Put card together
             card.innerHTML = `
-                <div class="project-card-header">
+                <div class="project-card-header" style="display: flex; justify-content: space-between; align-items: flex-start;">
                     <div class="project-meta-left">
                         <div class="badge-group" style="display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.35rem;">
                             <span class="badge">${project.categoryName}</span>
@@ -306,6 +341,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>
                         <h2 class="project-title">${project.title}</h2>
                     </div>
+                    <button class="delete-btn" onclick="deleteProject('${project.id}')" title="Delete Project">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
                 </div>
                 
                 <!-- Media Preview -->

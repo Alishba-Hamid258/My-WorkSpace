@@ -765,6 +765,85 @@ h1, h2, h3, h4, h5, h6 {
     color: var(--accent-blue);
 }
 
+/* Filter Tabs Styling */
+.feed-filter-tabs {
+    display: flex;
+    gap: 0.75rem;
+    overflow-x: auto;
+    padding-bottom: 0.5rem;
+    margin-bottom: 0.5rem;
+    scrollbar-width: thin;
+}
+
+.feed-filter-tabs::-webkit-scrollbar {
+    height: 4px;
+}
+.feed-filter-tabs::-webkit-scrollbar-track {
+    background: transparent;
+}
+.feed-filter-tabs::-webkit-scrollbar-thumb {
+    background: var(--text-muted);
+    border-radius: 10px;
+}
+
+.filter-tab-btn {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    color: var(--text-secondary);
+    padding: 0.65rem 1.25rem;
+    border-radius: 50px;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast), box-shadow var(--transition-fast), transform var(--transition-fast);
+    white-space: nowrap;
+}
+
+.filter-tab-btn:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.15);
+    color: var(--text-primary);
+}
+
+.filter-tab-btn.active {
+    background: linear-gradient(135deg, rgba(155, 81, 224, 0.25) 0%, rgba(0, 242, 254, 0.25) 100%);
+    border-color: var(--accent-blue);
+    color: var(--text-primary);
+    box-shadow: 0 0 15px rgba(0, 242, 254, 0.15);
+    transform: translateY(-1px);
+}
+
+/* Dynamic Card Delete Button */
+.delete-btn {
+    background: rgba(255, 0, 127, 0.08);
+    border: 1px solid rgba(255, 0, 127, 0.2);
+    color: var(--accent-pink);
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: background var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.delete-btn:hover {
+    background: rgba(255, 0, 127, 0.2);
+    border-color: var(--accent-pink);
+    transform: scale(1.08);
+    box-shadow: 0 0 15px rgba(255, 0, 127, 0.25);
+}
+
+.delete-btn:active {
+    transform: scale(0.95);
+}
+
 /* 9. Footer Component */
 .main-footer {
     border-top: 1px solid var(--glass-border);
