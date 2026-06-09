@@ -310,6 +310,30 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
+    // Toggle logic for document viewer engines (Microsoft vs Google)
+    window.switchDocTab = function(tabName, projectId) {
+        const cardNode = document.getElementById(projectId);
+        if (!cardNode) return;
+
+        const buttons = cardNode.querySelectorAll('.tab-btn');
+        buttons.forEach(btn => {
+            if (btn.getAttribute('data-tab') === tabName) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+
+        const panels = cardNode.querySelectorAll('.doc-panel');
+        panels.forEach(panel => {
+            if (panel.getAttribute('id') === `${projectId}-${tabName}`) {
+                panel.classList.add('active');
+            } else {
+                panel.classList.remove('active');
+            }
+        });
+    };
+
     // Delete project from feed logic
     window.deleteProject = function(projectId) {
         const index = projectsList.findIndex(p => p.id === projectId);
@@ -496,9 +520,25 @@ document.addEventListener('DOMContentLoaded', () => {
                     `;
                 } else if (isPpt && embedUrl.startsWith('http')) {
                     const officeUrl = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(embedUrl)}`;
+                    const googleUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(embedUrl)}&embedded=true`;
                     previewHtml = `
-                        <div class="project-preview-container document-preview-mode">
-                            <iframe src="${officeUrl}" style="width:100%; height:100%; border:none;" title="${project.title}"></iframe>
+                        <div class="project-preview-container document-preview-mode" style="display: flex; flex-direction: column;">
+                            <div class="video-tabs-nav">
+                                <button class="tab-btn active" data-tab="office" onclick="switchDocTab('office', '${project.id}')">
+                                    <i class="fa-solid fa-file-powerpoint"></i> Office Viewer
+                                </button>
+                                <button class="tab-btn" data-tab="google" onclick="switchDocTab('google', '${project.id}')">
+                                    <i class="fa-solid fa-magnifying-glass"></i> Google Docs (Crisp Vector)
+                                </button>
+                            </div>
+                            <div style="height: calc(100% - 45px); position: relative; width: 100%; background: #04030a;">
+                                <div class="doc-panel active" id="${project.id}-office" style="height: 100%;">
+                                    <iframe src="${officeUrl}" style="width:100%; height:100%; border:none;" title="${project.title}"></iframe>
+                                </div>
+                                <div class="doc-panel" id="${project.id}-google" style="height: 100%;">
+                                    <iframe src="${googleUrl}" style="width:100%; height:100%; border:none;" title="${project.title}"></iframe>
+                                </div>
+                            </div>
                         </div>
                     `;
                 } else {
@@ -527,9 +567,25 @@ document.addEventListener('DOMContentLoaded', () => {
                     `;
                 } else if (isWordOrExcel && embedUrl.startsWith('http')) {
                     const officeUrl = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(embedUrl)}`;
+                    const googleUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(embedUrl)}&embedded=true`;
                     previewHtml = `
-                        <div class="project-preview-container document-preview-mode">
-                            <iframe src="${officeUrl}" style="width:100%; height:100%; border:none;" title="${project.title}"></iframe>
+                        <div class="project-preview-container document-preview-mode" style="display: flex; flex-direction: column;">
+                            <div class="video-tabs-nav">
+                                <button class="tab-btn active" data-tab="office" onclick="switchDocTab('office', '${project.id}')">
+                                    <i class="fa-solid fa-file-word"></i> Office Viewer
+                                </button>
+                                <button class="tab-btn" data-tab="google" onclick="switchDocTab('google', '${project.id}')">
+                                    <i class="fa-solid fa-magnifying-glass"></i> Google Docs (Crisp Vector)
+                                </button>
+                            </div>
+                            <div style="height: calc(100% - 45px); position: relative; width: 100%; background: #04030a;">
+                                <div class="doc-panel active" id="${project.id}-office" style="height: 100%;">
+                                    <iframe src="${officeUrl}" style="width:100%; height:100%; border:none;" title="${project.title}"></iframe>
+                                </div>
+                                <div class="doc-panel" id="${project.id}-google" style="height: 100%;">
+                                    <iframe src="${googleUrl}" style="width:100%; height:100%; border:none;" title="${project.title}"></iframe>
+                                </div>
+                            </div>
                         </div>
                     `;
                 } else {
