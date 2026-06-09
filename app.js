@@ -20,8 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentFilter = 'all';
     
     // Public Database Configurations (kvdb.io Bucket)
-    const PUBLIC_DB_URL = 'https://kvdb.io/MNXoZJc9nphZp7xZ6n8492/alishba_portfolio_shared_projects';
-    let publicProjectsList = [];
+    const PUBLIC_DB_URL = 'https://kvdb.io/J2qexFiJjh2NaWkGpH8rb9/alishba_portfolio_shared_projects';
 
     // User Owner Token to securely delete/manage their own shared projects
     let ownerToken = localStorage.getItem('portfolio_owner_token');
@@ -119,65 +118,53 @@ document.addEventListener('DOMContentLoaded', () => {
         const description = document.getElementById('project-description').value.trim();
         const file = projectFileInput.files[0];
         const link = document.getElementById('project-link').value.trim();
-        const sharePublicly = document.getElementById('project-share-public') ? document.getElementById('project-share-public').checked : false;
 
         if (!file && !link) {
             alert('Please select a file to upload OR paste a public share link!');
             return;
         }
 
-        function saveLocalAndRender(finalFileUrl, finalFileName, finalFileSize, finalFileData) {
+        const handleProjectAddition = (fileUrl, fileName, fileSize) => {
             const newProject = {
-                id: 'uploaded-' + Date.now(),
+                id: 'public-' + Date.now(),
                 title: title,
                 type: category,
                 categoryName: getCategoryName(category),
                 description: description,
-                fileName: finalFileName,
-                fileSize: finalFileSize,
-                fileUrl: finalFileUrl,
-                fileData: finalFileData // Store File Blob in IndexedDB!
+                fileName: fileName,
+                fileSize: fileSize,
+                fileUrl: fileUrl,
+                owner: ownerToken
             };
 
-            // Add to state and save to DB
             projectsList.unshift(newProject);
-            saveProjectToDB(newProject);
             
-            // Reset form & inputs
-            uploadForm.reset();
-            fileNameDisplay.textContent = 'Choose file...';
-            updateFileInputConfig();
-            
-            // Rerender feed
-            renderFeed();
-            
-            // Scroll to new project
-            const targetCard = document.getElementById(newProject.id);
-            if (targetCard) {
-                targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
-            return newProject;
-        }
+            // Sync to KVdb
+            saveProjectsToPublicDB(() => {
+                // Reset form & inputs
+                uploadForm.reset();
+                fileNameDisplay.textContent = 'Choose file...';
+                updateFileInputConfig();
+                
+                // Rerender feed
+                renderFeed();
+                
+                // Scroll to new project
+                const targetCard = document.getElementById(newProject.id);
+                if (targetCard) {
+                    targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            });
+        };
 
-        if (sharePublicly) {
-            if (file) {
-                uploadFileToPublic(file, (publicUrl) => {
-                    const savedLocal = saveLocalAndRender(URL.createObjectURL(file), file.name, formatBytes(file.size), file);
-                    publishToPublicBucket(savedLocal.title, savedLocal.type, savedLocal.description, publicUrl, file.name, formatBytes(file.size));
-                }, (err) => {
-                    alert('Failed to upload file to the public server: ' + err.message + '. Saving locally only.');
-                    saveLocalAndRender(URL.createObjectURL(file), file.name, formatBytes(file.size), file);
-                });
-            } else {
-                const savedLocal = saveLocalAndRender(link, 'Public Link', 'External URL', null);
-                publishToPublicBucket(savedLocal.title, savedLocal.type, savedLocal.description, link, 'Public Link', 'External URL');
-            }
+        if (file) {
+            uploadFileToPublic(file, (publicUrl) => {
+                handleProjectAddition(publicUrl, file.name, formatBytes(file.size));
+            }, (err) => {
+                alert('Failed to upload file to the public server: ' + err.message);
+            });
         } else {
-            if (file) {
-                saveLocalAndRender(URL.createObjectURL(file), file.name, formatBytes(file.size), file);
-            } else {
-                saveLocalAndRender(link, 'Public Link', 'External URL', null);
-            }
+            handleProjectAddition(link, 'Public Link', 'External URL');
         }
     });
 
@@ -190,56 +177,6 @@ document.addEventListener('DOMContentLoaded', () => {
             case 'document': return 'Academic Report / Document';
             default: return 'Project Workspace Resource';
         }
-    }
-
-    // -------------------------------------------------------------
-    // IndexedDB Database Helpers for Local Persistent Storage
-    // -------------------------------------------------------------
-    const dbName = "AcademicPortfolioDB";
-    const storeName = "projects";
-    let db = null;
-
-    function openDatabase(callback) {
-        const request = indexedDB.open(dbName, 1);
-        
-        request.onupgradeneeded = function(e) {
-            const database = e.target.result;
-            if (!database.objectStoreNames.contains(storeName)) {
-                database.createObjectStore(storeName, { keyPath: "id" });
-            }
-        };
-
-        request.onsuccess = function(e) {
-            db = e.target.result;
-            if (callback) callback();
-        };
-
-        request.onerror = function(e) {
-            console.error("IndexedDB error:", e);
-            if (window.location.protocol === 'file:') {
-                alert("Browser Security Notice: You opened this site directly from local files (file:///...). Browsers block local databases on file:// schemes for security. To save your uploaded files permanently, please use the live GitHub website link or start a local server (http://localhost:8000)!");
-            }
-            if (callback) callback();
-        };
-    }
-
-    function saveProjectToDB(project) {
-        if (!db) return;
-        const dbCopy = { ...project };
-        if (dbCopy.fileUrl && dbCopy.fileUrl.startsWith('blob:')) {
-            delete dbCopy.fileUrl; // Regenerate on load
-        }
-        
-        const transaction = db.transaction([storeName], "readwrite");
-        const store = transaction.objectStore(storeName);
-        store.put(dbCopy);
-    }
-
-    function deleteProjectFromDB(projectId) {
-        if (!db) return;
-        const transaction = db.transaction([storeName], "readwrite");
-        const store = transaction.objectStore(storeName);
-        store.delete(projectId);
     }
 
     // Helper to upload files directly to tmpfiles.org public hosting (48-hour expiration)
@@ -308,52 +245,28 @@ document.addEventListener('DOMContentLoaded', () => {
         xhr.send(formData);
     }
 
-    // Helper to publish a project configuration to the public database bucket (kvdb.io)
-    function publishToPublicBucket(title, type, description, fileUrl, fileName, fileSize) {
-        const publicItem = {
-            id: 'public-' + Date.now(),
-            title: title,
-            type: type,
-            categoryName: 'Shared ' + getCategoryName(type),
-            description: description,
-            fileName: fileName || 'Public Link',
-            fileSize: fileSize || 'External Link',
-            fileUrl: fileUrl,
-            owner: ownerToken
-        };
-
-        // Prevent duplicates in public shared feed
-        if (publicProjectsList.some(p => p.title === publicItem.title && p.fileUrl === publicItem.fileUrl)) {
-            alert('This project is already shared publicly!');
-            return;
-        }
-
-        publicProjectsList.unshift(publicItem);
-
+    // Save projects to public database bucket (kvdb.io)
+    function saveProjectsToPublicDB(callback) {
         fetch(PUBLIC_DB_URL, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(publicProjectsList)
+            body: JSON.stringify(projectsList)
         })
         .then(res => {
-            if (res.ok) {
-                alert('Successfully published to the Public Shared tab! (Note: Uploaded files will be stored publicly for 48 hours)');
-                const publicTabBtn = document.querySelector('.filter-tab-btn[data-filter="public"]');
-                if (publicTabBtn) {
-                    publicTabBtn.click();
-                }
-            } else {
-                alert('Failed to publish to the public database.');
+            if (!res.ok) {
+                throw new Error('HTTP status ' + res.status);
             }
+            console.log("Synced projects list to public DB.");
+            if (callback) callback();
         })
         .catch(err => {
-            console.error("Error publishing project:", err);
-            alert('Database connection error.');
+            console.error("Error saving projects to database:", err);
+            alert('Failed to save project to public database. Please verify that your bucket has been activated by checking your email inbox for alishbahamid17@gmail.com and clicking the verification link from KVdb.io!');
         });
     }
 
-    // Fetch shared projects from kvdb database
-    function fetchPublicProjects() {
+    // Load projects from public database bucket
+    function loadProjectsFromPublicDB() {
         fetch(PUBLIC_DB_URL)
             .then(res => {
                 if (res.status === 404) {
@@ -362,82 +275,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 return res.json();
             })
             .then(data => {
-                publicProjectsList = data || [];
-                console.log("Fetched shared projects:", publicProjectsList.length);
-                if (currentFilter === 'public') {
-                    renderFeed();
-                }
+                projectsList = data || [];
+                console.log("Fetched projects:", projectsList.length);
+                renderFeed();
             })
             .catch(err => {
-                console.error("Error fetching shared projects:", err);
-            });
-    }
-
-    // Publish project to the public database
-    window.makeProjectPublic = function(projectId) {
-        const project = projectsList.find(p => p.id === projectId);
-        if (!project) return;
-
-        if (confirm('Do you want to publish this project to the Public Shared tab for everyone to see?')) {
-            if (project.fileData && (project.fileData instanceof Blob || project.fileData instanceof File)) {
-                // If it is a local file, upload it to the public server first
-                uploadFileToPublic(project.fileData, (publicUrl) => {
-                    // Update project with public URL so it persists
-                    project.fileUrl = publicUrl;
-                    saveProjectToDB(project);
-                    renderFeed();
-
-                    publishToPublicBucket(project.title, project.type, project.description, publicUrl, project.fileName, project.fileSize);
-                }, (err) => {
-                    alert('Failed to upload file to the public server: ' + err.message);
-                });
-            } else if (project.fileUrl && !project.fileUrl.startsWith('blob:')) {
-                // If it is already a public link
-                publishToPublicBucket(project.title, project.type, project.description, project.fileUrl, project.fileName, project.fileSize);
-            } else {
-                alert('Cannot share this project: No file data or URL found.');
-            }
-        }
-    };
-
-    function loadProjectsFromDB() {
-        if (!db) {
-            initPreloadedProjects();
-            return;
-        }
-        
-        const transaction = db.transaction([storeName], "readonly");
-        const store = transaction.objectStore(storeName);
-        const request = store.getAll();
-        
-        request.onsuccess = function(e) {
-            const saved = e.target.result || [];
-            if (saved.length === 0) {
-                initPreloadedProjects();
-            } else {
-                projectsList = saved.map(p => {
-                    if (p.fileData && (p.fileData instanceof Blob || p.fileData instanceof File)) {
-                        try {
-                            p.fileUrl = URL.createObjectURL(p.fileData);
-                        } catch (err) {
-                            console.error("Error creating Object URL for project:", p.id, err);
-                            p.fileUrl = '';
-                        }
-                    } else if (p.fileUrl) {
-                        // Keep publicUrl/external URL as is
-                    } else {
-                        p.fileUrl = '';
-                    }
-                    return p;
-                });
-                projectsList.sort((a, b) => b.id.localeCompare(a.id));
+                console.error("Error fetching projects:", err);
+                projectsList = [];
                 renderFeed();
-            }
-        };
-        
-        request.onerror = function() {
-            initPreloadedProjects();
-        };
+            });
     }
 
     // Toggle logic for CapCut vs AI video player tabs
@@ -466,69 +312,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Delete project from feed logic
     window.deleteProject = function(projectId) {
-        // If it is a public file hosted on the database, delete from database
-        if (projectId.startsWith('public-')) {
-            if (confirm('Are you sure you want to delete this project from the Public Shared tab? (This will remove it for everyone).')) {
-                const pubIndex = publicProjectsList.findIndex(p => p.id === projectId);
-                if (pubIndex !== -1) {
-                    publicProjectsList.splice(pubIndex, 1);
-                    
-                    fetch(PUBLIC_DB_URL, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(publicProjectsList)
-                    })
-                    .then(res => {
-                        if (res.ok) {
-                            alert('Project deleted from Public Shared tab.');
-                            renderFeed();
-                        } else {
-                            alert('Failed to delete project from database.');
-                        }
-                    })
-                    .catch(err => {
-                        console.error("Error deleting public project:", err);
-                        alert('Database error.');
-                    });
-                }
-            }
-            return;
-        }
-
         const index = projectsList.findIndex(p => p.id === projectId);
         if (index === -1) return;
         const project = projectsList[index];
 
-        if (confirm('Are you sure you want to delete this project?')) {
+        // Verify owner permissions
+        if (project.owner !== ownerToken) {
+            alert('Permission Denied: You are not the owner of this project and cannot delete it.');
+            return;
+        }
+
+        if (confirm('Are you sure you want to delete this project? This will remove it for everyone.')) {
             if (project.fileUrl && project.fileUrl.startsWith('blob:')) {
                 URL.revokeObjectURL(project.fileUrl);
             }
-
-            // Sync deletion: if this project was shared publicly by this owner, remove it from public feed too
-            const matchedPublicIndex = publicProjectsList.findIndex(p => 
-                p.title === project.title && 
-                p.type === project.type && 
-                p.owner === ownerToken
-            );
-
-            if (matchedPublicIndex !== -1) {
-                publicProjectsList.splice(matchedPublicIndex, 1);
-                fetch(PUBLIC_DB_URL, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(publicProjectsList)
-                })
-                .then(res => {
-                    if (res.ok) {
-                        console.log("Automatically removed from public shared database.");
-                    }
-                })
-                .catch(err => console.error("Error sync-deleting public project:", err));
-            }
-
-            deleteProjectFromDB(projectId);
             projectsList.splice(index, 1);
-            renderFeed();
+            saveProjectsToPublicDB(() => {
+                renderFeed();
+            });
         }
     };
 
@@ -569,9 +370,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Filter list
         let filteredList = projectsList;
-        if (currentFilter === 'public') {
-            filteredList = publicProjectsList;
-        } else if (currentFilter !== 'all') {
+        if (currentFilter !== 'all') {
             filteredList = projectsList.filter(p => p.type === currentFilter);
         }
 
@@ -579,9 +378,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (filteredList.length === 0) {
             let emptyMsg = 'Your workspace is empty. Use the sidebar form on the left to select a project file (Video, PPT, Image, or Document), enter a description, and publish it dynamically here!';
-            if (currentFilter === 'public') {
-                emptyMsg = `No public shared projects yet. Click the share icon on your local cards to publish them to this tab!`;
-            } else if (currentFilter !== 'all') {
+            if (currentFilter !== 'all') {
                 emptyMsg = `No projects found under the "${getCategoryName(currentFilter)}" tab. Use the form on the left to upload one!`;
             }
             projectFeed.innerHTML = `
@@ -732,19 +529,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
-            const showShareBtn = project.id.startsWith('uploaded-');
-            const shareBtnHtml = showShareBtn ? `
-                <button class="share-btn" onclick="makeProjectPublic('${project.id}')" title="Publish to Public Shared Tab">
-                    <i class="fa-solid fa-share-nodes"></i>
-                </button>
-            ` : '';
-
             // Public cards can only be deleted by their owner
-            let showDeleteBtn = true;
-            if (project.id.startsWith('public-')) {
-                showDeleteBtn = (project.owner === ownerToken);
-            }
-
+            const showDeleteBtn = (project.owner === ownerToken);
             const deleteBtnHtml = showDeleteBtn ? `
                 <button class="delete-btn" onclick="deleteProject('${project.id}')" title="Delete Project">
                     <i class="fa-solid fa-trash-can"></i>
@@ -762,7 +548,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         <h2 class="project-title">${project.title}</h2>
                     </div>
                     <div style="display: flex; align-items: center;">
-                        ${shareBtnHtml}
                         ${deleteBtnHtml}
                     </div>
                 </div>
@@ -791,8 +576,5 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Initialize forms and load projects from databases
     updateFileInputConfig();
-    openDatabase(() => {
-        loadProjectsFromDB();
-    });
-    fetchPublicProjects();
+    loadProjectsFromPublicDB();
 });
