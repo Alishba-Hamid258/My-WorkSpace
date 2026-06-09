@@ -509,6 +509,14 @@ h1, h2, h3, h4, h5, h6 {
     justify-content: center;
 }
 
+/* Document/Presentation specific preview sizing */
+.project-preview-container.document-preview-mode {
+    max-width: 100%;
+    aspect-ratio: auto;
+    height: 550px;
+    background: #04030a;
+}
+
 /* Image preview structure */
 .project-image-preview {
     width: 100%;

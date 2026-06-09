@@ -490,14 +490,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (embedUrl.includes('drive.google.com') || isPdf) {
                     previewHtml = `
-                        <div class="project-preview-container">
+                        <div class="project-preview-container document-preview-mode">
                             <iframe src="${embedUrl}" style="width:100%; height:100%; border:none;" title="${project.title}"></iframe>
                         </div>
                     `;
                 } else if (isPpt && embedUrl.startsWith('http')) {
                     const officeUrl = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(embedUrl)}`;
                     previewHtml = `
-                        <div class="project-preview-container">
+                        <div class="project-preview-container document-preview-mode">
                             <iframe src="${officeUrl}" style="width:100%; height:100%; border:none;" title="${project.title}"></iframe>
                         </div>
                     `;
@@ -521,14 +521,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (embedUrl.includes('drive.google.com') || isPdfOrTxt) {
                     previewHtml = `
-                        <div class="project-preview-container">
+                        <div class="project-preview-container document-preview-mode">
                             <iframe src="${embedUrl}" style="width:100%; height:100%; border:none;" title="${project.title}"></iframe>
                         </div>
                     `;
                 } else if (isWordOrExcel && embedUrl.startsWith('http')) {
                     const officeUrl = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(embedUrl)}`;
                     previewHtml = `
-                        <div class="project-preview-container">
+                        <div class="project-preview-container document-preview-mode">
                             <iframe src="${officeUrl}" style="width:100%; height:100%; border:none;" title="${project.title}"></iframe>
                         </div>
                     `;
@@ -580,7 +580,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
 
                 <!-- Footer Downloads -->
-                <div class="project-card-actions">
+                <div class="project-card-actions" style="display: flex; gap: 1rem; flex-wrap: wrap; justify-content: flex-end; width: 100%;">
+                    ${(() => {
+                        const isOfficeOrPdf = project.type === 'presentation' || project.type === 'document';
+                        if (isOfficeOrPdf && project.fileUrl && project.fileUrl.startsWith('http')) {
+                            const isPpt = (project.fileName && (project.fileName.toLowerCase().endsWith('.ppt') || project.fileName.toLowerCase().endsWith('.pptx'))) || project.fileUrl.toLowerCase().includes('.ppt') || project.fileUrl.toLowerCase().includes('.pptx');
+                            const isWordOrExcel = (project.fileName && (project.fileName.toLowerCase().endsWith('.doc') || project.fileName.toLowerCase().endsWith('.docx') || project.fileName.toLowerCase().endsWith('.xls') || project.fileName.toLowerCase().endsWith('.xlsx'))) || project.fileUrl.toLowerCase().includes('.doc') || project.fileUrl.toLowerCase().includes('.docx') || project.fileUrl.toLowerCase().includes('.xls') || project.fileUrl.toLowerCase().includes('.xlsx');
+                            
+                            let fullViewUrl = project.fileUrl;
+                            if (isPpt || isWordOrExcel) {
+                                fullViewUrl = `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(project.fileUrl)}`;
+                            }
+                            return `
+                                <a href="${fullViewUrl}" target="_blank" class="download-link view-full-link" style="border-color: var(--accent-purple); color: var(--text-primary); background: rgba(155, 81, 224, 0.05); margin-right: auto;">
+                                    <i class="fa-solid fa-up-right-from-square" style="color: var(--accent-purple);"></i>
+                                    <span>Open Full Screen / High Res</span>
+                                </a>
+                            `;
+                        }
+                        return '';
+                    })()}
                     <a href="${project.fileUrl}" download="${project.fileName}" class="download-link" id="download-${project.id}">
                         <i class="fa-solid fa-circle-arrow-down"></i>
                         <span>Download Project Files (${project.fileName} - ${project.fileSize || 'Local File'})</span>
