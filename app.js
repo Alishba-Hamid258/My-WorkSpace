@@ -485,11 +485,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 `;
             } else if (project.type === 'presentation') {
                 const embedUrl = getEmbedUrl(project.fileUrl);
-                // If PDF presentation or Google Drive link, render live in iframe
-                if (embedUrl.includes('drive.google.com') || (project.fileName && project.fileName.toLowerCase().endsWith('.pdf')) || embedUrl.toLowerCase().endsWith('.pdf')) {
+                const isPdf = (project.fileName && project.fileName.toLowerCase().endsWith('.pdf')) || embedUrl.toLowerCase().endsWith('.pdf');
+                const isPpt = (project.fileName && (project.fileName.toLowerCase().endsWith('.ppt') || project.fileName.toLowerCase().endsWith('.pptx'))) || embedUrl.toLowerCase().includes('.ppt') || embedUrl.toLowerCase().includes('.pptx');
+
+                if (embedUrl.includes('drive.google.com') || isPdf) {
                     previewHtml = `
                         <div class="project-preview-container">
                             <iframe src="${embedUrl}" style="width:100%; height:100%; border:none;" title="${project.title}"></iframe>
+                        </div>
+                    `;
+                } else if (isPpt && embedUrl.startsWith('http')) {
+                    const officeUrl = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(embedUrl)}`;
+                    previewHtml = `
+                        <div class="project-preview-container">
+                            <iframe src="${officeUrl}" style="width:100%; height:100%; border:none;" title="${project.title}"></iframe>
                         </div>
                     `;
                 } else {
@@ -507,11 +516,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             } else {
                 const embedUrl = getEmbedUrl(project.fileUrl);
-                // PDF, TXT or Google Drive render in iframe, binary files show download card
-                if (embedUrl.includes('drive.google.com') || (project.fileName && (project.fileName.toLowerCase().endsWith('.pdf') || project.fileName.toLowerCase().endsWith('.txt'))) || embedUrl.toLowerCase().endsWith('.pdf') || embedUrl.toLowerCase().endsWith('.txt')) {
+                const isPdfOrTxt = (project.fileName && (project.fileName.toLowerCase().endsWith('.pdf') || project.fileName.toLowerCase().endsWith('.txt'))) || embedUrl.toLowerCase().endsWith('.pdf') || embedUrl.toLowerCase().endsWith('.txt');
+                const isWordOrExcel = (project.fileName && (project.fileName.toLowerCase().endsWith('.doc') || project.fileName.toLowerCase().endsWith('.docx') || project.fileName.toLowerCase().endsWith('.xls') || project.fileName.toLowerCase().endsWith('.xlsx'))) || embedUrl.toLowerCase().includes('.doc') || embedUrl.toLowerCase().includes('.docx') || embedUrl.toLowerCase().includes('.xls') || embedUrl.toLowerCase().includes('.xlsx');
+
+                if (embedUrl.includes('drive.google.com') || isPdfOrTxt) {
                     previewHtml = `
                         <div class="project-preview-container">
                             <iframe src="${embedUrl}" style="width:100%; height:100%; border:none;" title="${project.title}"></iframe>
+                        </div>
+                    `;
+                } else if (isWordOrExcel && embedUrl.startsWith('http')) {
+                    const officeUrl = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(embedUrl)}`;
+                    previewHtml = `
+                        <div class="project-preview-container">
+                            <iframe src="${officeUrl}" style="width:100%; height:100%; border:none;" title="${project.title}"></iframe>
                         </div>
                     `;
                 } else {
