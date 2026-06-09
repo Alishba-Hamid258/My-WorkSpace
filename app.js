@@ -267,7 +267,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Load projects from public database bucket
     function loadProjectsFromPublicDB() {
-        fetch(PUBLIC_DB_URL)
+        fetch(PUBLIC_DB_URL + '?t=' + Date.now(), { cache: 'no-store' })
             .then(res => {
                 if (res.status === 404) {
                     return [];
